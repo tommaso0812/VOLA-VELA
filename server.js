@@ -3,8 +3,15 @@ const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 
+// 1. File statici
 app.use(express.static('public'));
 
+// 2. Rotta per la pagina principale
+app.get('/', (req, res) => {
+  res.send('<h1>Simulatore VOLA-VELA attivo! ⛵</h1>');
+});
+
+// 3. Stato iniziale della regata
 let statoRegata = {
     campo: 'livorno',
     vento: { twd: 0, tws: 12 },
@@ -16,6 +23,7 @@ let statoRegata = {
 
 let barche = {};
 
+// 4. Gestione Socket.io
 io.on('connection', (socket) => {
     socket.on('registraBarca', (dati) => {
         barche[socket.id] = {
@@ -50,20 +58,6 @@ io.on('connection', (socket) => {
     });
 });
 
+// 5. Avvio del server (una sola volta!)
 const PORT = process.env.PORT || 3000;
 http.listen(PORT, () => console.log(`Server attivo sulla porta ${PORT}`));
-const express = require('express');
-const app = express();
-const http = require('http').createServer(app);
-const io = require('socket.io')(http);
-
-// Servire la pagina principale
-app.get('/', (req, res) => {
-  res.send('<h1>Simulatore VOLA-VELA attivo! ⛵</h1>');
-});
-
-// Impostazione porta per Render
-const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => {
-  console.log(`Server attivo sulla porta ${PORT}`);
-});
