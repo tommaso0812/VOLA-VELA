@@ -52,3 +52,18 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3000;
 http.listen(PORT, () => console.log(`Server attivo sulla porta ${PORT}`));
+const express = require('express');
+const app = express();
+const http = require('http').createServer(app);
+const io = require('socket.io')(http);
+
+// Servire la pagina principale
+app.get('/', (req, res) => {
+  res.send('<h1>Simulatore VOLA-VELA attivo! ⛵</h1>');
+});
+
+// Impostazione porta per Render
+const PORT = process.env.PORT || 3000;
+http.listen(PORT, () => {
+  console.log(`Server attivo sulla porta ${PORT}`);
+});
