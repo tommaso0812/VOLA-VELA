@@ -16,30 +16,13 @@ let boe = {
 };
 
 let barche = {};
-let statoGara = 'preparazione'; // Stato: 'preparazione' oppure 'inGara'
-let tempoRimanente = 30; // Conto alla rovescia iniziale in secondi ⏱️
-
-// Timer automatico server-side ⌛
-const timerInterval = setInterval(() => {
-    if (statoGara === 'preparazione') {
-        tempoRimanente--;
-        io.emit('aggiornaTimer', { tempo: tempoRimanente, stato: statoGara });
-
-        if (tempoRimanente <= 0) {
-            statoGara = 'inGara';
-            io.emit('inizioGara');
-            console.log("🏁 Gara iniziata! Posizione delle boe bloccata.");
-            clearInterval(timerInterval);
-        }
-    }
-}, 1000);
+let statoGara = 'preparazione'; // 'preparazione' oppure 'inGara'
 
 io.on('connection', (socket) => {
     console.log(`Nuova connessione: ${socket.id} 🔌`);
 
-    // Inviamo lo stato attuale del campo di gara al nuovo client
+    // Invia lo stato attuale al nuovo client
     socket.emit('aggiornaBoe', boe);
-    socket.emit('aggiornaTimer', { tempo: tempoRimanente, stato: statoGara });
     if (statoGara === 'inGara') {
         socket.emit('inizioGara');
     }
@@ -55,15 +38,22 @@ io.on('connection', (socket) => {
         io.emit('aggiornaBarche', barche);
     });
 
-    // Ricezione nuova posizione della boa (attiva solo in preparazione) 🖱️
+    // Spostamento boa (valido solo in fase di preparazione) 📍
     socket.on('spostaBoa', (data) => {
         if (statoGara === 'preparazione' && boe[data.nome]) {
             boe[data.nome] = [data.lat, data.lng];
-            io.emit('aggiornaBoe', boe); // Notifica tutti i client
+            io.emit('aggiornaBoe', boe);
         }
     });
 
-    // Gestione della disconnessione
+    // Comando manuale di avvio gara 🏁
+    socket.on('avviaGara', () => {
+        statoGara = 'inGara';
+        io.emit('inizioGara');
+        console.log("🏁 Gara avviata manualmente! Posizioni delle boe bloccate.");
+    });
+
+    // Disconnessione
     socket.on('disconnect', () => {
         delete barche[socket.id];
         io.emit('aggiornaBarche', barche);
