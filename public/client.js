@@ -1,7 +1,5 @@
-// Inizializzazione della mappa sul mare di Gallipoli 🗺️
 const map = L.map('mappa').setView([40.055, 17.975], 14);
 
-// Layer OpenStreetMap 🌊
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '© OpenStreetMap'
@@ -13,23 +11,29 @@ let markersBarche = {};
 let markersBoe = {};
 let garaIniziata = false;
 
-// Connessione iniziale
 socket.on('connect', () => {
-    console.log("Connesso al server Socket.io con successo! 🔌");
+    console.log("Connesso al server Socket.io! 🔌");
     socket.emit('registraBarca', { nome: "Mia Barca", colore: "#e74c3c" });
 });
 
-// Ricezione del timer ⏱️
-socket.on('aggiornaTimer', (data) => {
-    console.log(`Tempo alla partenza: ${data.tempo}s`);
-});
+// Funzione richiamata dal pulsante "Avvia Gara" 🏁
+function avviaGara() {
+    socket.emit('avviaGara');
+}
 
-// Evento di avvio della gara: blocco del trascinamento 🔒
+// Blocco delle boe all'avvio della gara 🔒
 socket.on('inizioGara', () => {
     garaIniziata = true;
-    console.log("🏁 Gara iniziata! Le boe sono bloccate.");
+    console.log("🏁 Gara iniziata! Boe bloccate.");
     
-    // Disabilita il drag & drop su tutti i marker delle boe
+    // Disabilita il pulsante
+    const btn = document.getElementById('btn-avvia');
+    if (btn) {
+        btn.innerText = "🔒 Gara in Corso";
+        btn.disabled = true;
+    }
+
+    // Disabilita il drag & drop su tutte le boe
     for (let nome in markersBoe) {
         if (markersBoe[nome].dragging) {
             markersBoe[nome].dragging.disable();
@@ -37,18 +41,16 @@ socket.on('inizioGara', () => {
     }
 });
 
-// Gestione delle boe (Drag & Drop solo in preparazione) 📍
+// Gestione boe con Drag & Drop 📍
 socket.on('aggiornaBoe', (boe) => {
     for (let nome in boe) {
         const coords = boe[nome];
 
         if (!markersBoe[nome]) {
-            // Crea il marcatore trascinabile solo prima dell'inizio
             markersBoe[nome] = L.marker(coords, { draggable: !garaIniziata })
                 .addTo(map)
                 .bindPopup("Boa: " + nome);
 
-            // Invia la nuova posizione al rilascio del mouse
             markersBoe[nome].on('dragend', (e) => {
                 if (!garaIniziata) {
                     const nuovaPosizione = e.target.getLatLng();
@@ -61,18 +63,14 @@ socket.on('aggiornaBoe', (boe) => {
             });
         } else {
             markersBoe[nome].setLatLng(coords);
-            
-            // Mantiene sincronizzato lo stato di trascinamento
-            if (garaIniziata) {
+            if (garaIniziata && markersBoe[nome].dragging) {
                 markersBoe[nome].dragging.disable();
-            } else {
-                markersBoe[nome].dragging.enable();
             }
         }
     }
 });
 
-// Aggiornamento barche ⛵
+// Gestione barche ⛵
 socket.on('aggiornaBarche', (barche) => {
     for (let id in barche) {
         let b = barche[id];
