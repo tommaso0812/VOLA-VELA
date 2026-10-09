@@ -13,8 +13,11 @@ const socket = io();
 let markersBarche = {};
 let markersBoe = {};
 
-// Registra la barca al momento della connessione
-socket.emit('registraBarca', { nome: "Mia Barca", colore: "#e74c3c" });
+// Attende che la connessione sia stabilita prima di registrare la barca 🔌
+socket.on('connect', () => {
+    console.log("Connesso al server Socket.io con successo!");
+    socket.emit('registraBarca', { nome: "Mia Barca", colore: "#e74c3c" });
+});
 
 // Ricezione e aggiornamento delle posizioni delle boe
 socket.on('aggiornaBoe', (boe) => {
