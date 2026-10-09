@@ -1,50 +1,78 @@
 // Inizializzazione della mappa sul mare di Gallipoli 🗺️
 const map = L.map('mappa').setView([40.055, 17.975], 14);
 
-// Caricamento del layer grafico da OpenStreetMap 🌊
+// Layer OpenStreetMap 🌊
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '© OpenStreetMap'
 }).addTo(map);
 
-// Connessione in tempo reale tramite Socket.io 🔌
 const socket = io();
 
 let markersBarche = {};
 let markersBoe = {};
+let garaIniziata = false;
 
-// Registrazione barca alla connessione
+// Connessione iniziale
 socket.on('connect', () => {
-    console.log("Connesso al server Socket.io con successo!");
+    console.log("Connesso al server Socket.io con successo! 🔌");
     socket.emit('registraBarca', { nome: "Mia Barca", colore: "#e74c3c" });
 });
 
-// Ricezione e aggiornamento delle posizioni delle boe (con drag & drop 🖱️)
-socket.on('aggiornaBoe', (boe) => {
-    for (let nome in boe) {
-        if (!markersBoe[nome]) {
-            // 1. Creiamo il marker trascinabile (draggable: true)
-            markersBoe[nome] = L.marker(boe[nome], { draggable: true })
-                .addTo(map)
-                .bindPopup("Boa: " + nome);
+// Ricezione del timer ⏱️
+socket.on('aggiornaTimer', (data) => {
+    console.log(`Tempo alla partenza: ${data.tempo}s`);
+});
 
-            // 2. Inviamo le nuove coordinate quando la boa viene rilasciata
-            markersBoe[nome].on('dragend', (e) => {
-                const nuovaPosizione = e.target.getLatLng();
-                
-                socket.emit('spostaBoa', {
-                    nome: nome,
-                    lat: nuovaPosizione.lat,
-                    lng: nuovaPosizione.lng
-                });
-            });
-        } else {
-            markersBoe[nome].setLatLng(boe[nome]);
+// Evento di avvio della gara: blocco del trascinamento 🔒
+socket.on('inizioGara', () => {
+    garaIniziata = true;
+    console.log("🏁 Gara iniziata! Le boe sono bloccate.");
+    
+    // Disabilita il drag & drop su tutti i marker delle boe
+    for (let nome in markersBoe) {
+        if (markersBoe[nome].dragging) {
+            markersBoe[nome].dragging.disable();
         }
     }
 });
 
-// Ricezione e aggiornamento delle posizioni delle barche
+// Gestione delle boe (Drag & Drop solo in preparazione) 📍
+socket.on('aggiornaBoe', (boe) => {
+    for (let nome in boe) {
+        const coords = boe[nome];
+
+        if (!markersBoe[nome]) {
+            // Crea il marcatore trascinabile solo prima dell'inizio
+            markersBoe[nome] = L.marker(coords, { draggable: !garaIniziata })
+                .addTo(map)
+                .bindPopup("Boa: " + nome);
+
+            // Invia la nuova posizione al rilascio del mouse
+            markersBoe[nome].on('dragend', (e) => {
+                if (!garaIniziata) {
+                    const nuovaPosizione = e.target.getLatLng();
+                    socket.emit('spostaBoa', {
+                        nome: nome,
+                        lat: nuovaPosizione.lat,
+                        lng: nuovaPosizione.lng
+                    });
+                }
+            });
+        } else {
+            markersBoe[nome].setLatLng(coords);
+            
+            // Mantiene sincronizzato lo stato di trascinamento
+            if (garaIniziata) {
+                markersBoe[nome].dragging.disable();
+            } else {
+                markersBoe[nome].dragging.enable();
+            }
+        }
+    }
+});
+
+// Aggiornamento barche ⛵
 socket.on('aggiornaBarche', (barche) => {
     for (let id in barche) {
         let b = barche[id];
@@ -56,7 +84,6 @@ socket.on('aggiornaBarche', (barche) => {
     }
 });
 
-// Funzione per inviare i comandi di virata al server 🧭
 function sterza(gradi) {
     socket.emit('sterza', gradi);
 }
