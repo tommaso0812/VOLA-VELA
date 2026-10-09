@@ -1,88 +1,54 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Simulatore Regata VOLA-VELA ⛵</title>
-  
-  <!-- CSS di Leaflet per la mappa -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: Arial, sans-serif;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-    }
-
-    #pannello-info {
-      background-color: #2c3e50;
-      color: white;
-      padding: 10px 15px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    }
-
-    #mappa {
-      flex: 1;
-      width: 100%;
-    }
-
-    #controlli {
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 1000;
-      background: rgba(255, 255, 255, 0.9);
-      padding: 10px 20px;
-      border-radius: 25px;
-      display: flex;
-      gap: 15px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-    }
-
-    button {
-      padding: 10px 20px;
-      font-size: 16px;
-      font-weight: bold;
-      border: none;
-      border-radius: 5px;
-      background-color: #3498db;
-      color: white;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background-color: #2980b9;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulatore Regatta Gallipoli ⛵</title>
+    
+    <!-- CSS Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        #mappa {
+            width: 100%;
+            height: 100vh;
+        }
+        #btn-avvia {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        #btn-avvia:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+    </style>
 </head>
 <body>
 
-  <!-- Pannello superiore per dati vento e stato -->
-  <div id="pannello-info">
-    <div><strong>⛵ Simulatore VOLA-VELA - Gallipoli</strong></div>
-    <div>🍃 Vento: <span id="vento-info">12 nodi (0°)</span></div>
-  </div>
+    <button id="btn-avvia" onclick="avviaGara()">🏁 Avvia Gara</button>
+    <div id="mappa"></div>
 
-  <!-- Contenitore della mappa -->
-  <div id="mappa"></div>
-
-  <!-- Controlli per la barca -->
-  <div id="controlli">
-    <button onclick="sterza(-5)">⬅️ Orza / Poggia (-5°)</button>
-    <button onclick="sterza(5)">Poggia / Orza (+5°) ➡️</button>
-  </div>
-
-  <!-- Librerie JavaScript -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="client.js"></script>
+    <!-- Script Leaflet e Socket.io -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="client.js"></script>
 </body>
 </html>
