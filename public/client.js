@@ -1,4 +1,3 @@
-Inizializzazione della mappa su Gallipoli 🗺️
 const centroGallipoli = [40.055, 17.975];
 const map = L.map('mappa').setView(centroGallipoli, 14);
 
@@ -59,3 +58,4 @@ socket.emit('registraBarca', { nome: 'Veliero Salentino' });
 // 4. Funzione per inviare i comandi di sterzo al server 🧭
 function sterza(gradi) {
   socket.emit('sterza', gradi);
+
