@@ -8,37 +8,70 @@ const io = new Server(server);
 
 app.use(express.static('public'));
 
-// Posizioni iniziali delle boe nel mare di Gallipoli 📍
+// Boe del campo di regata e linea di partenza 📍
 let boe = {
-    "Partenza": [40.055, 17.970],
-    "Bolina": [40.062, 17.975],
-    "Poppa": [40.050, 17.980]
+    "Partenza Sinistra": [40.054, 17.970],
+    "Partenza Destra": [40.056, 17.970],
+    "Bolina": [40.065, 17.975],
+    "Arrivo": [40.055, 17.970]
 };
 
-let barche = {};
-let statoGara = 'preparazione'; // 'preparazione' oppure 'inGara'
+// Match Race: Due barche fisse con slot assegnabili ai giocatori ⛵
+let barche = {
+    "barca1": { nome: "Barca 1 (Blu)", lat: 40.053, lng: 17.969, heading: 0, speed: 0, socketId: null, colore: "#3498db" },
+    "barca2": { nome: "Barca 2 (Rosso)", lat: 40.057, lng: 17.969, heading: 0, speed: 0, socketId: null, colore: "#e74c3c" }
+};
+
+let statoGara = 'preparazione';
+
+// Fisica e aggiornamento continuo della posizione delle barche in movimento 🌊
+setInterval(() => {
+    for (let id in barche) {
+        let b = barche[id];
+        if (b.speed !== 0) {
+            let rad = (b.heading - 90) * (Math.PI / 180);
+            b.lat += Math.sin(rad) * 0.0001 * b.speed;
+            b.lng += Math.cos(rad) * 0.0001 * b.speed;
+        }
+    }
+    io.emit('aggiornaBarche', barche);
+}, 50);
 
 io.on('connection', (socket) => {
-    console.log(`Nuova connessione: ${socket.id} 🔌`);
+    console.log(`Connesso: ${socket.id} 🔌`);
 
-    // Invia lo stato attuale al nuovo client
-    socket.emit('aggiornaBoe', boe);
-    if (statoGara === 'inGara') {
-        socket.emit('inizioGara');
+    // Assegnazione automatica dello slot barca
+    let assignedBoat = null;
+    if (!barche["barca1"].socketId) {
+        barche["barca1"].socketId = socket.id;
+        assignedBoat = "barca1";
+    } else if (!barche["barca2"].socketId) {
+        barche["barca2"].socketId = socket.id;
+        assignedBoat = "barca2";
     }
 
-    // Registrazione barca
-    socket.on('registraBarca', (data) => {
-        barche[socket.id] = {
-            nome: data.nome || "Barca " + socket.id.substring(0, 4),
-            lat: 40.054 + (Math.random() - 0.5) * 0.002,
-            lng: 17.969 + (Math.random() - 0.5) * 0.002,
-            colore: data.colore || "#e74c3c"
-        };
-        io.emit('aggiornaBarche', barche);
+    // Invia lo stato iniziale al client
+    socket.emit('initMatchRace', { assignedBoat, boe, barche });
+    io.emit('aggiornaBoe', boe);
+    io.emit('aggiornaBarche', barche);
+
+    // Gestione dei comandi da tastiera ricevuti ⌨️
+    socket.on('comandoTastiera', (data) => {
+        let boatKey = null;
+        if (barche["barca1"].socketId === socket.id) boatKey = "barca1";
+        if (barche["barca2"].socketId === socket.id) boatKey = "barca2";
+
+        if (boatKey && statoGara === 'inGara') {
+            let b = barche[boatKey];
+            if (data.azione === 'sinistra') b.heading -= 15;
+            if (data.azione === 'destra') b.heading += 15;
+            if (data.azione === 'avanti') b.speed = Math.min(b.speed + 1, 4);
+            if (data.azione === 'indietro') b.speed = Math.max(b.speed - 1, -2);
+            if (data.azione === 'stop') b.speed = 0;
+        }
     });
 
-    // Spostamento boa (valido solo in fase di preparazione) 📍
+    // Spostamento boe in preparazione 📍
     socket.on('spostaBoa', (data) => {
         if (statoGara === 'preparazione' && boe[data.nome]) {
             boe[data.nome] = [data.lat, data.lng];
@@ -46,21 +79,19 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Comando manuale di avvio gara 🏁
+    // Avvio manuale della gara 🏁
     socket.on('avviaGara', () => {
         statoGara = 'inGara';
         io.emit('inizioGara');
-        console.log("🏁 Gara avviata manualmente! Posizioni delle boe bloccate.");
+        console.log("🏁 Match Race avviato!");
     });
 
-    // Disconnessione
     socket.on('disconnect', () => {
-        delete barche[socket.id];
+        if (barche["barca1"].socketId === socket.id) barche["barca1"].socketId = null;
+        if (barche["barca2"].socketId === socket.id) barche["barca2"].socketId = null;
         io.emit('aggiornaBarche', barche);
     });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`Server avviato sulla porta ${PORT} 🚀`);
-});
+server.listen(PORT, () => console.log(`Server avviato su porta ${PORT} 🚀`));
