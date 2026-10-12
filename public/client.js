@@ -9,31 +9,65 @@ const socket = io();
 
 let markersBarche = {};
 let markersBoe = {};
+let myBoatKey = null;
 let garaIniziata = false;
 
-socket.on('connect', () => {
-    console.log("Connesso al server Socket.io! 🔌");
-    socket.emit('registraBarca', { nome: "Mia Barca", colore: "#e74c3c" });
+// Assegnazione del ruolo barca all'ingresso ⛵
+socket.on('initMatchRace', (data) => {
+    myBoatKey = data.assignedBoat;
+    
+    const banner = document.createElement('div');
+    banner.style.position = 'absolute';
+    banner.style.bottom = '20px';
+    banner.style.left = '20px';
+    banner.style.zIndex = '1000';
+    banner.style.background = 'white';
+    banner.style.padding = '12px';
+    banner.style.borderRadius = '8px';
+    banner.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+    banner.style.fontWeight = 'bold';
+
+    if (myBoatKey) {
+        banner.innerHTML = `Stai guidando: <span style="color: ${myBoatKey === 'barca1' ? '#3498db' : '#e74c3c'}">${myBoatKey.toUpperCase()}</span><br><small>Usa ⬅️ ➡️ per sterzare, ⬆️ ⬇️ per velocità, Spazio per fermarti</small>`;
+    } else {
+        banner.innerHTML = `Modalità Spettatore 👁️ (Slot barche occupati)`;
+    }
+    document.body.appendChild(banner);
 });
 
-// Funzione richiamata dal pulsante "Avvia Gara" 🏁
+// Ascolto dei tasti freccia per muovere la barca ⌨️
+window.addEventListener('keydown', (e) => {
+    if (!garaIniziata || !myBoatKey) return;
+
+    if (e.key === 'ArrowLeft') {
+        socket.emit('comandoTastiera', { azione: 'sinistra' });
+        e.preventDefault();
+    } else if (e.key === 'ArrowRight') {
+        socket.emit('comandoTastiera', { azione: 'destra' });
+        e.preventDefault();
+    } else if (e.key === 'ArrowUp') {
+        socket.emit('comandoTastiera', { azione: 'avanti' });
+        e.preventDefault();
+    } else if (e.key === 'ArrowDown') {
+        socket.emit('comandoTastiera', { azione: 'indietro' });
+        e.preventDefault();
+    } else if (e.code === 'Space') {
+        socket.emit('comandoTastiera', { azione: 'stop' });
+        e.preventDefault();
+    }
+});
+
 function avviaGara() {
     socket.emit('avviaGara');
 }
 
-// Blocco delle boe all'avvio della gara 🔒
 socket.on('inizioGara', () => {
     garaIniziata = true;
-    console.log("🏁 Gara iniziata! Boe bloccate.");
-    
-    // Disabilita il pulsante
     const btn = document.getElementById('btn-avvia');
     if (btn) {
-        btn.innerText = "🔒 Gara in Corso";
+        btn.innerText = "🔒 Match Race in Corso";
         btn.disabled = true;
     }
-
-    // Disabilita il drag & drop su tutte le boe
     for (let nome in markersBoe) {
         if (markersBoe[nome].dragging) {
             markersBoe[nome].dragging.disable();
@@ -41,11 +75,10 @@ socket.on('inizioGara', () => {
     }
 });
 
-// Gestione boe con Drag & Drop 📍
+// Gestione boe trascinabili in preparazione 📍
 socket.on('aggiornaBoe', (boe) => {
     for (let nome in boe) {
         const coords = boe[nome];
-
         if (!markersBoe[nome]) {
             markersBoe[nome] = L.marker(coords, { draggable: !garaIniziata })
                 .addTo(map)
@@ -53,12 +86,8 @@ socket.on('aggiornaBoe', (boe) => {
 
             markersBoe[nome].on('dragend', (e) => {
                 if (!garaIniziata) {
-                    const nuovaPosizione = e.target.getLatLng();
-                    socket.emit('spostaBoa', {
-                        nome: nome,
-                        lat: nuovaPosizione.lat,
-                        lng: nuovaPosizione.lng
-                    });
+                    const p = e.target.getLatLng();
+                    socket.emit('spostaBoa', { nome: nome, lat: p.lat, lng: p.lng });
                 }
             });
         } else {
@@ -70,7 +99,7 @@ socket.on('aggiornaBoe', (boe) => {
     }
 });
 
-// Gestione barche ⛵
+// Sincronizzazione barche sulla mappa ⛵
 socket.on('aggiornaBarche', (barche) => {
     for (let id in barche) {
         let b = barche[id];
@@ -81,7 +110,3 @@ socket.on('aggiornaBarche', (barche) => {
         }
     }
 });
-
-function sterza(gradi) {
-    socket.emit('sterza', gradi);
-}
